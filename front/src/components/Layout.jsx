@@ -1,13 +1,15 @@
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { ShoppingBag, LayoutDashboard, Package, TrendingUp, Settings, LogOut } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function Layout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, logout } = useAuth()
 
   const handleLogout = () => {
-    // TODO: Implement actual logout logic (clear tokens, etc.)
+    logout()
     navigate("/login")
   }
 
@@ -54,7 +56,9 @@ export default function Layout({ children }) {
             </nav>
 
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground hidden sm:inline">Jean Dupont</span>
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {user?.full_name || user?.username || 'Utilisateur'}
+              </span>
               <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
                 <LogOut className="h-4 w-4" />
                 Déconnexion
