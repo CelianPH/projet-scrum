@@ -4,16 +4,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ShoppingBag, Eye, EyeOff } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: ""
   })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+  const [apiError, setApiError] = useState("")
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -33,10 +36,8 @@ export default function Login() {
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.email) {
-      newErrors.email = "L'email est requis"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "L'email n'est pas valide"
+    if (!formData.username) {
+      newErrors.username = "Le nom d'utilisateur est requis"
     }
 
     if (!formData.password) {
@@ -57,14 +58,17 @@ export default function Login() {
     }
 
     setIsLoading(true)
+    setApiError("")
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      // TODO: Replace with actual authentication logic
-      // For now, just navigate to dashboard
+    const result = await login(formData.username, formData.password)
+
+    setIsLoading(false)
+
+    if (result.success) {
       navigate("/dashboard")
-    }, 1000)
+    } else {
+      setApiError(result.error || "Erreur de connexion. Veuillez réessayer.")
+    }
   }
 
   return (
@@ -83,21 +87,26 @@ export default function Login() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {apiError && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                {apiError}
+              </div>
+            )}
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
+              <label htmlFor="username" className="text-sm font-medium">
+                Nom d'utilisateur
               </label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="employe@boutique.com"
-                value={formData.email}
+                id="username"
+                name="username"
+                type="text"
+                placeholder="admin"
+                value={formData.username}
                 onChange={handleChange}
-                className={errors.email ? "border-red-500" : ""}
+                className={errors.username ? "border-red-500" : ""}
               />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email}</p>
+              {errors.username && (
+                <p className="text-sm text-red-600">{errors.username}</p>
               )}
             </div>
 
