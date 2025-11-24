@@ -1,0 +1,1 @@
+# FastAPI Stock Management Application
