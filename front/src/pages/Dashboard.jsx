@@ -1,9 +1,10 @@
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Package,
-  ShoppingBag,
   TrendingUp,
   AlertCircle,
   Plus,
@@ -13,6 +14,9 @@ import {
 } from "lucide-react"
 
 function Dashboard() {
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState("")
+
   // Données mockées pour les statistiques
   const stats = [
     {
@@ -54,28 +58,14 @@ function Dashboard() {
     { id: 5, name: "Chemise à carreaux", category: "Chemises", stock: 34, price: "34.99€" },
   ]
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl font-bold">StockMode</h1>
-            </div>
-            <nav className="flex items-center gap-4">
-              <Button variant="ghost">Tableau de bord</Button>
-              <Button variant="ghost">Inventaire</Button>
-              <Button variant="ghost">Rapports</Button>
-              <Button variant="outline">Paramètres</Button>
-            </nav>
-          </div>
-        </div>
-      </header>
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      navigate(`/inventory?search=${encodeURIComponent(searchQuery)}`)
+    }
+  }
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+  return (
+    <div>
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">Tableau de bord</h2>
@@ -123,9 +113,12 @@ function Dashboard() {
                   <Input
                     placeholder="Rechercher par nom, catégorie, SKU..."
                     className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
                 </div>
-                <Button>Rechercher</Button>
+                <Button onClick={handleSearch}>Rechercher</Button>
               </div>
             </CardContent>
           </Card>
@@ -200,7 +193,6 @@ function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      </main>
     </div>
   )
 }
