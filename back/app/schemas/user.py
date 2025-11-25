@@ -39,3 +39,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+
+class ProfileUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str

@@ -133,6 +133,24 @@ class ApiService {
       method: 'DELETE',
     });
   }
+
+  // Profile management methods
+  async updateProfile(profileData) {
+    return await this.request('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  async changePassword(currentPassword, newPassword) {
+    return await this.request('/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+  }
 }
 
 export default new ApiService();
