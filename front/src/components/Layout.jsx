@@ -1,12 +1,14 @@
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { ShoppingBag, LayoutDashboard, Package, TrendingUp, Settings, LogOut, Users } from "lucide-react"
+import { ShoppingBag, LayoutDashboard, Package, TrendingUp, Settings, LogOut, Users, Sun, Moon } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
+import { useTheme } from "@/contexts/ThemeContext"
 
 export default function Layout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
+  const { theme, toggleTheme, isDark } = useTheme()
 
   const handleLogout = async () => {
     await logout()
@@ -60,6 +62,19 @@ export default function Layout({ children }) {
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 {user?.full_name || user?.username || 'Utilisateur'}
               </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                className="h-9 w-9"
+                title={isDark ? "Passer au thème clair" : "Passer au thème sombre"}
+              >
+                {isDark ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
               <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
                 <LogOut className="h-4 w-4" />
                 Déconnexion

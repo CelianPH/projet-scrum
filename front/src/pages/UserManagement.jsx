@@ -425,10 +425,10 @@ export default function UserManagement() {
                     name="role"
                     value={formData.role}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm cursor-pointer"
                   >
-                    <option value="gestionnaire">Gestionnaire</option>
-                    <option value="admin">Administrateur</option>
+                    <option value="gestionnaire" className="bg-background text-foreground">Gestionnaire</option>
+                    <option value="admin" className="bg-background text-foreground">Administrateur</option>
                   </select>
                 </div>
 
