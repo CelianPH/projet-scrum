@@ -167,13 +167,6 @@ export default function Login() {
             >
               {isLoading ? "Connexion..." : "Se connecter"}
             </Button>
-
-            <div className="text-center text-sm text-muted-foreground">
-              Pas encore de compte ?{" "}
-              <Link to="/register" className="text-primary hover:underline">
-                Créer un compte
-              </Link>
-            </div>
           </form>
         </CardContent>
       </Card>

@@ -1,33 +1,35 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import Layout from "@/components/Layout"
 import Login from "@/pages/Login"
-import Register from "@/pages/Register"
-import ForgotPassword from "@/pages/ForgotPassword"
 import Dashboard from "@/pages/Dashboard"
 import Inventory from "@/pages/Inventory"
 import Reports from "@/pages/Reports"
 import Settings from "@/pages/Settings"
+import UserManagement from "@/pages/UserManagement"
+import { useAuth } from "@/contexts/AuthContext"
 
 function App() {
-  // TODO: Implement proper authentication state management
-  // DEVELOPMENT MODE: Authentication is bypassed (set to true) since backend is not ready
-  // Change this to false and implement proper auth logic when backend is available
-  const isAuthenticated = true // This should come from context/state management
+  const { isAuthenticated, loading } = useAuth()
 
   // Protected Route wrapper
   const ProtectedRoute = ({ children }) => {
+    if (loading) {
+      return <div className="min-h-screen flex items-center justify-center">Chargement...</div>
+    }
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />
     }
     return <Layout>{children}</Layout>
   }
 
-  // Auth Route wrapper (allows access to auth pages even when logged in for development)
+  // Auth Route wrapper (redirect to dashboard if already logged in)
   const AuthRoute = ({ children }) => {
-    // Commented out redirect for development - allows access to login page
-    // if (isAuthenticated) {
-    //   return <Navigate to="/dashboard" replace />
-    // }
+    if (loading) {
+      return <div className="min-h-screen flex items-center justify-center">Chargement...</div>
+    }
+    if (isAuthenticated) {
+      return <Navigate to="/dashboard" replace />
+    }
     return children
   }
 
@@ -40,22 +42,6 @@ function App() {
           element={
             <AuthRoute>
               <Login />
-            </AuthRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <AuthRoute>
-              <Register />
-            </AuthRoute>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <AuthRoute>
-              <ForgotPassword />
             </AuthRoute>
           }
         />
@@ -93,6 +79,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <UserManagement />
             </ProtectedRoute>
           }
         />

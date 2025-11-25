@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { ShoppingBag, LayoutDashboard, Package, TrendingUp, Settings, LogOut } from "lucide-react"
+import { ShoppingBag, LayoutDashboard, Package, TrendingUp, Settings, LogOut, Users } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
 export default function Layout({ children }) {
@@ -8,8 +8,8 @@ export default function Layout({ children }) {
   const location = useLocation()
   const { user, logout } = useAuth()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate("/login")
   }
 
@@ -17,6 +17,7 @@ export default function Layout({ children }) {
     { path: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { path: "/inventory", label: "Inventaire", icon: Package },
     { path: "/reports", label: "Rapports", icon: TrendingUp },
+    ...(user?.role === "admin" ? [{ path: "/users", label: "Utilisateurs", icon: Users }] : []),
     { path: "/settings", label: "Paramètres", icon: Settings },
   ]
 
