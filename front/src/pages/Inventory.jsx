@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,7 @@ import {
   X,
   Download
 } from "lucide-react"
+import api from "@/services/api"
 
 export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -19,36 +20,62 @@ export default function Inventory() {
   const [selectedSize, setSelectedSize] = useState("")
   const [selectedColor, setSelectedColor] = useState("")
   const [showFilters, setShowFilters] = useState(false)
+  const [inventory, setInventory] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Mock data for inventory
-  const [inventory] = useState([
-    { id: 1, sku: "TSH-001", name: "T-shirt Sport Blanc", category: "T-shirts", size: "M", color: "Blanc", quantity: 45, price: 29.99, location: "A1-15" },
-    { id: 2, sku: "PNT-002", name: "Pantalon Jogging Noir", category: "Pantalons", size: "L", color: "Noir", quantity: 23, price: 59.99, location: "B2-08" },
-    { id: 3, sku: "SHO-003", name: "Baskets Running Rouges", category: "Chaussures", size: "42", color: "Blanc/Rouge", quantity: 12, price: 139.99, location: "C3-22" },
-    { id: 4, sku: "JKT-004", name: "Veste Coupe-Vent", category: "Vestes", size: "L", color: "Noir", quantity: 8, price: 89.99, location: "D1-05" },
-    { id: 5, sku: "TSH-005", name: "T-shirt Technique Bleu", category: "T-shirts", size: "S", color: "Bleu", quantity: 34, price: 34.99, location: "A1-18" },
-    { id: 6, sku: "SHO-006", name: "Sneakers Urbaines Blanches", category: "Chaussures", size: "41", color: "Blanc", quantity: 28, price: 119.99, location: "C3-24" },
-    { id: 7, sku: "TSH-007", name: "T-shirt Imprimé Gris", category: "T-shirts", size: "XL", color: "Gris", quantity: 19, price: 24.99, location: "A1-20" },
-    { id: 8, sku: "PNT-008", name: "Short Sport Noir", category: "Shorts", size: "M", color: "Noir", quantity: 31, price: 39.99, location: "B1-12" },
-    { id: 9, sku: "SHO-009", name: "Chaussures Running Bleues", category: "Chaussures", size: "43", color: "Bleu", quantity: 15, price: 159.99, location: "C3-26" },
-    { id: 10, sku: "JKT-010", name: "Veste Polaire Grise", category: "Vestes", size: "M", color: "Gris", quantity: 6, price: 109.99, location: "D1-08" },
-    { id: 11, sku: "TSH-011", name: "T-shirt Basique Blanc", category: "T-shirts", size: "L", color: "Blanc", quantity: 42, price: 19.99, location: "A1-22" },
-    { id: 12, sku: "SHO-012", name: "Baskets Sport Bicolores", category: "Chaussures", size: "44", color: "Noir/Blanc", quantity: 9, price: 134.99, location: "C3-28" },
-  ])
+  // Charger les produits et catégories au montage du composant
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Charger les produits et les catégories en parallèle
+      const [productsData, categoriesData] = await Promise.all([
+        api.getProducts(),
+        api.getCategories()
+      ])
+
+      setInventory(productsData)
+      setCategories(categoriesData)
+    } catch (err) {
+      console.error('Erreur lors du chargement des données:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+      return
+    }
+
+    try {
+      await api.deleteProduct(id)
+      setInventory(inventory.filter(item => item.id !== id))
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err)
+      alert('Erreur lors de la suppression du produit: ' + err.message)
+    }
+  }
 
   // Get unique values for filters
-  const categories = [...new Set(inventory.map(item => item.category))]
-  const sizes = [...new Set(inventory.map(item => item.size))].sort()
-  const colors = [...new Set(inventory.map(item => item.color))]
+  const sizes = [...new Set(inventory.map(item => item.size))].filter(Boolean).sort()
+  const colors = [...new Set(inventory.map(item => item.color))].filter(Boolean)
 
   // Filter inventory based on search and filters
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = searchQuery === "" ||
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
+      item.sku.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesCategory = selectedCategory === "" || item.category === selectedCategory
+    const matchesCategory = selectedCategory === "" || item.category_id === parseInt(selectedCategory)
     const matchesSize = selectedSize === "" || item.size === selectedSize
     const matchesColor = selectedColor === "" || item.color === selectedColor
 
@@ -63,6 +90,29 @@ export default function Inventory() {
   }
 
   const activeFiltersCount = [selectedCategory, selectedSize, selectedColor].filter(f => f !== "").length
+
+  // Fonction pour obtenir le nom de la catégorie
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId)
+    return category ? category.name : 'N/A'
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Chargement des produits...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-red-600">Erreur: {error}</p>
+        <Button onClick={loadData}>Réessayer</Button>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -172,7 +222,7 @@ export default function Inventory() {
                 >
                   <option value="">Toutes les catégories</option>
                   {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
+                    <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
               </div>
@@ -252,18 +302,18 @@ export default function Inventory() {
                         <td className="p-4 align-middle font-medium">{item.name}</td>
                         <td className="p-4 align-middle">
                           <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-secondary text-secondary-foreground">
-                            {item.category}
+                            {getCategoryName(item.category_id)}
                           </span>
                         </td>
-                        <td className="p-4 align-middle text-sm">{item.size}</td>
-                        <td className="p-4 align-middle text-sm">{item.color}</td>
+                        <td className="p-4 align-middle text-sm">{item.size || '-'}</td>
+                        <td className="p-4 align-middle text-sm">{item.color || '-'}</td>
                         <td className="p-4 align-middle">
-                          <span className={`font-semibold ${item.quantity < 15 ? 'text-red-600' : item.quantity < 30 ? 'text-orange-600' : 'text-green-600'}`}>
+                          <span className={`font-semibold ${item.quantity < item.min_stock_threshold ? 'text-red-600' : item.quantity < item.min_stock_threshold * 2 ? 'text-orange-600' : 'text-green-600'}`}>
                             {item.quantity}
                           </span>
                         </td>
                         <td className="p-4 align-middle font-medium">{item.price}€</td>
-                        <td className="p-4 align-middle text-sm text-muted-foreground">{item.location}</td>
+                        <td className="p-4 align-middle text-sm font-medium">{item.location || '-'}</td>
                         <td className="p-4 align-middle">
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Voir les détails">
@@ -272,7 +322,13 @@ export default function Inventory() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier">
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" title="Supprimer">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-600 hover:text-red-700"
+                              title="Supprimer"
+                              onClick={() => handleDeleteProduct(item.id)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>

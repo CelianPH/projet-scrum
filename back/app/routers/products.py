@@ -10,14 +10,13 @@ from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
 router = APIRouter(prefix="/products", tags=["Products"])
 
 
-@router.get("/", response_model=List[ProductResponse])
+@router.get("/", response_model=List[ProductResponse], response_model_exclude_unset=False)
 def get_products(
     skip: int = 0,
     limit: int = 100,
     category_id: Optional[int] = Query(None),
     low_stock: bool = Query(False),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     query = db.query(Product)
 
@@ -28,6 +27,9 @@ def get_products(
         query = query.filter(Product.quantity <= Product.min_stock_threshold)
 
     products = query.offset(skip).limit(limit).all()
+    if products:
+        print(f"DEBUG: First product location = {products[0].location}")
+        print(f"DEBUG: First product dict keys = {products[0].__dict__.keys()}")
     return products
 
 

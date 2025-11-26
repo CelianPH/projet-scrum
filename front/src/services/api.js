@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8002/api';
 
 class ApiService {
   async request(endpoint, options = {}) {
@@ -73,12 +73,58 @@ class ApiService {
     return await this.request(`/products${queryString ? `?${queryString}` : ''}`);
   }
 
+  async getProduct(id) {
+    return await this.request(`/products/${id}`);
+  }
+
+  async createProduct(productData) {
+    return await this.request('/products', {
+      method: 'POST',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  async updateProduct(id, productData) {
+    return await this.request(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  async deleteProduct(id) {
+    const url = `${API_BASE_URL}/products/${id}`;
+    const token = localStorage.getItem('token');
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return true;
+  }
+
   async getCategories() {
     return await this.request('/categories');
   }
 
-  async getStockMovements() {
-    return await this.request('/stock-movements');
+  async getStockMovements(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return await this.request(`/stock-movements${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async createStockMovement(movementData) {
+    return await this.request('/stock-movements', {
+      method: 'POST',
+      body: JSON.stringify(movementData),
+    });
   }
 }
 
