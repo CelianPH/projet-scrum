@@ -26,9 +26,41 @@ import {
   Download,
   FileText
 } from "lucide-react"
+import { useTheme } from "@/contexts/ThemeContext"
+
+// Composant Tooltip personnalisé pour le thème sombre
+const CustomTooltip = ({ active, payload, label }) => {
+  const { isDark } = useTheme()
+  
+  if (active && payload && payload.length) {
+    return (
+      <div 
+        className="rounded-lg border p-3 shadow-md"
+        style={{
+          backgroundColor: isDark ? 'hsl(222.2, 84%, 4.9%)' : 'white',
+          borderColor: isDark ? 'hsl(217.2, 32.6%, 17.5%)' : 'hsl(214.3, 31.8%, 91.4%)',
+          color: isDark ? 'hsl(210, 40%, 98%)' : 'hsl(222.2, 84%, 4.9%)'
+        }}
+      >
+        <p className="font-medium mb-2">{label}</p>
+        {payload.map((entry, index) => (
+          <p key={index} style={{ color: entry.color }}>
+            {`${entry.name}: ${entry.value}`}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
 
 export default function Reports() {
   const [timeRange, setTimeRange] = useState("month")
+  const { isDark } = useTheme()
+  
+  // Couleurs pour les axes et grilles selon le thème
+  const axisColor = isDark ? '#9ca3af' : '#6b7280'
+  const gridColor = isDark ? '#374151' : '#e5e7eb'
 
   // Mock data for charts
   const salesData = [
@@ -74,8 +106,8 @@ export default function Reports() {
       change: "+12.5%",
       trend: "up",
       icon: Package,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50"
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20"
     },
     {
       title: "Revenus",
@@ -83,8 +115,8 @@ export default function Reports() {
       change: "+8.2%",
       trend: "up",
       icon: DollarSign,
-      color: "text-green-600",
-      bgColor: "bg-green-50"
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-900/20"
     },
     {
       title: "Articles en stock",
@@ -92,8 +124,8 @@ export default function Reports() {
       change: "-3.1%",
       trend: "down",
       icon: Package,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50"
+      color: "text-orange-600 dark:text-orange-400",
+      bgColor: "bg-orange-50 dark:bg-orange-900/20"
     },
     {
       title: "Alertes stock",
@@ -101,8 +133,8 @@ export default function Reports() {
       change: "+2",
       trend: "down",
       icon: AlertCircle,
-      color: "text-red-600",
-      bgColor: "bg-red-50"
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-50 dark:bg-red-900/20"
     },
   ]
 
@@ -117,17 +149,17 @@ export default function Reports() {
           </p>
         </div>
         <div className="flex gap-2 mt-4 md:mt-0">
-          <div className="flex items-center gap-2 border rounded-md px-3 py-2">
+          <div className="flex items-center gap-2 border rounded-md px-3 py-2 bg-background">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <select
-              className="bg-transparent text-sm border-none outline-none"
+              className="bg-transparent text-sm text-foreground border-none outline-none cursor-pointer"
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
             >
-              <option value="week">Cette semaine</option>
-              <option value="month">Ce mois</option>
-              <option value="quarter">Ce trimestre</option>
-              <option value="year">Cette année</option>
+              <option value="week" className="bg-background text-foreground">Cette semaine</option>
+              <option value="month" className="bg-background text-foreground">Ce mois</option>
+              <option value="quarter" className="bg-background text-foreground">Ce trimestre</option>
+              <option value="year" className="bg-background text-foreground">Cette année</option>
             </select>
           </div>
           <Button variant="outline">
@@ -153,7 +185,7 @@ export default function Reports() {
                   <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                     <Icon className={`h-5 w-5 ${stat.color}`} />
                   </div>
-                  <div className={`flex items-center gap-1 text-sm ${stat.trend === "up" ? "text-green-600" : "text-red-600"}`}>
+                  <div className={`flex items-center gap-1 text-sm ${stat.trend === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                     <TrendIcon className="h-4 w-4" />
                     <span className="font-medium">{stat.change}</span>
                   </div>
@@ -177,11 +209,11 @@ export default function Reports() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="name" stroke={axisColor} />
+                <YAxis stroke={axisColor} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ color: isDark ? '#e5e7eb' : '#374151' }} />
                 <Bar dataKey="ventes" fill="#3b82f6" name="Ventes" />
               </BarChart>
             </ResponsiveContainer>
@@ -197,11 +229,11 @@ export default function Reports() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="name" stroke={axisColor} />
+                <YAxis stroke={axisColor} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ color: isDark ? '#e5e7eb' : '#374151' }} />
                 <Line
                   type="monotone"
                   dataKey="valeur"
@@ -226,11 +258,11 @@ export default function Reports() {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={stockEvolutionData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mois" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+                <XAxis dataKey="mois" stroke={axisColor} />
+                <YAxis stroke={axisColor} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend wrapperStyle={{ color: isDark ? '#e5e7eb' : '#374151' }} />
                 <Line
                   type="monotone"
                   dataKey="stock"
@@ -266,7 +298,7 @@ export default function Reports() {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -300,9 +332,9 @@ export default function Reports() {
                     </td>
                     <td className="p-4 align-middle font-medium">{product.name}</td>
                     <td className="p-4 align-middle">
-                      <span className="font-semibold text-blue-600">{product.sales}</span>
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">{product.sales}</span>
                     </td>
-                    <td className="p-4 align-middle font-semibold text-green-600">
+                    <td className="p-4 align-middle font-semibold text-green-600 dark:text-green-400">
                       {product.revenue.toFixed(2)}€
                     </td>
                   </tr>

@@ -216,11 +216,11 @@ export default function Inventory() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Catégorie</label>
                 <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm cursor-pointer"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                 >
-                  <option value="">Toutes les catégories</option>
+                  <option value="" className="bg-background text-foreground">Toutes les catégories</option>
                   {categories.map(category => (
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
@@ -231,13 +231,13 @@ export default function Inventory() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Taille</label>
                 <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm cursor-pointer"
                   value={selectedSize}
                   onChange={(e) => setSelectedSize(e.target.value)}
                 >
-                  <option value="">Toutes les tailles</option>
+                  <option value="" className="bg-background text-foreground">Toutes les tailles</option>
                   {sizes.map(size => (
-                    <option key={size} value={size}>{size}</option>
+                    <option key={size} value={size} className="bg-background text-foreground">{size}</option>
                   ))}
                 </select>
               </div>
@@ -246,13 +246,13 @@ export default function Inventory() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Couleur</label>
                 <select
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm cursor-pointer"
                   value={selectedColor}
                   onChange={(e) => setSelectedColor(e.target.value)}
                 >
-                  <option value="">Toutes les couleurs</option>
+                  <option value="" className="bg-background text-foreground">Toutes les couleurs</option>
                   {colors.map(color => (
-                    <option key={color} value={color}>{color}</option>
+                    <option key={color} value={color} className="bg-background text-foreground">{color}</option>
                   ))}
                 </select>
               </div>

@@ -39,9 +39,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    apiService.logout();
+  const logout = async () => {
+    await apiService.logout();
     setUser(null);
+  };
+
+  const updateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const value = {
@@ -49,6 +54,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
     loading,
     isAuthenticated: !!user,
   };

@@ -1,74 +1,143 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   User,
-  Bell,
   Shield,
-  Database,
-  Palette,
   Save,
-  AlertCircle,
   Mail,
   Lock,
-  Building,
-  Package
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import apiService from "@/services/api"
 
 export default function Settings() {
+  const { user, updateUser } = useAuth()
   const [activeTab, setActiveTab] = useState("profile")
   const [isSaving, setIsSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
   // Profile settings state
   const [profile, setProfile] = useState({
-    firstName: "Jean",
-    lastName: "Dupont",
-    email: "jean.dupont@example.com",
-    phone: "+33 6 12 34 56 78",
-    role: "Gestionnaire de stock"
+    username: "",
+    email: "",
+    full_name: "",
+    role: ""
   })
 
-  // Notification settings state
-  const [notifications, setNotifications] = useState({
-    emailAlerts: true,
-    lowStockAlerts: true,
-    dailyReport: false,
-    weeklyReport: true,
-    newProductNotif: true
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
   })
-
-  // Stock alert settings state
-  const [stockAlerts, setstockAlerts] = useState({
-    lowStockThreshold: 15,
-    criticalStockThreshold: 5,
-    expirationWarning: 30
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
   })
+  const [passwordErrors, setPasswordErrors] = useState({})
 
-  // Store settings state
-  const [store, setStore] = useState({
-    name: "Ma Boutique - Centre Ville",
-    address: "123 Rue du Commerce",
-    city: "Paris",
-    postalCode: "75001",
-    country: "France"
-  })
+  // Charger les données utilisateur au montage
+  useEffect(() => {
+    loadUserData()
+  }, [user])
 
-  const handleSave = () => {
+  const loadUserData = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      const userData = await apiService.getCurrentUser()
+      setProfile({
+        username: userData.username || "",
+        email: userData.email || "",
+        full_name: userData.full_name || "",
+        role: userData.role === "admin" ? "Administrateur" : "Gestionnaire"
+      })
+    } catch (error) {
+      console.error('Error loading user data:', error)
+      setError("Erreur lors du chargement des données utilisateur")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleProfileSave = async () => {
     setIsSaving(true)
-    // Simulate API call
-    setTimeout(() => {
+    setError("")
+    setSuccess("")
+
+    try {
+      await apiService.updateProfile({
+        username: profile.username,
+        email: profile.email,
+        full_name: profile.full_name || null
+      })
+      
+      // Mettre à jour le contexte d'authentification
+      const updatedUser = await apiService.getCurrentUser()
+      updateUser(updatedUser)
+      
+      setSuccess("Profil mis à jour avec succès !")
+      setTimeout(() => setSuccess(""), 3000)
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      setError(error.message || "Erreur lors de la mise à jour du profil")
+    } finally {
       setIsSaving(false)
-      // Show success message (you can add a toast notification here)
-      alert("Paramètres enregistrés avec succès !")
-    }, 1000)
+    }
+  }
+
+  const handlePasswordChange = async () => {
+    setPasswordErrors({})
+    setError("")
+    setSuccess("")
+
+    // Validation
+    if (!passwordData.currentPassword) {
+      setPasswordErrors({ currentPassword: "Le mot de passe actuel est requis" })
+      return
+    }
+    if (!passwordData.newPassword) {
+      setPasswordErrors({ newPassword: "Le nouveau mot de passe est requis" })
+      return
+    }
+    if (passwordData.newPassword.length < 6) {
+      setPasswordErrors({ newPassword: "Le mot de passe doit contenir au moins 6 caractères" })
+      return
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordErrors({ confirmPassword: "Les mots de passe ne correspondent pas" })
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      await apiService.changePassword(passwordData.currentPassword, passwordData.newPassword)
+      setSuccess("Mot de passe modifié avec succès !")
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      })
+      setTimeout(() => setSuccess(""), 3000)
+    } catch (error) {
+      console.error('Error changing password:', error)
+      setError(error.message || "Erreur lors du changement de mot de passe")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const tabs = [
     { id: "profile", label: "Profil", icon: User },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "alerts", label: "Alertes stock", icon: AlertCircle },
-    { id: "store", label: "Boutique", icon: Building },
     { id: "security", label: "Sécurité", icon: Shield },
   ]
 
@@ -120,290 +189,77 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Prénom</label>
-                    <Input
-                      value={profile.firstName}
-                      onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
-                    />
+                {loading ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Nom</label>
-                    <Input
-                      value={profile.lastName}
-                      onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
-                    />
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    {error && (
+                      <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                        {error}
+                      </div>
+                    )}
+                    {success && (
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                        {success}
+                      </div>
+                    )}
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      className="pl-10"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Téléphone</label>
-                  <Input
-                    type="tel"
-                    value={profile.phone}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Rôle</label>
-                  <Input value={profile.role} disabled className="bg-muted" />
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSaving ? "Enregistrement..." : "Enregistrer"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Notifications Tab */}
-          {activeTab === "notifications" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Préférences de notification</CardTitle>
-                <CardDescription>
-                  Choisissez comment vous souhaitez être notifié
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-medium">Alertes par email</div>
-                    <div className="text-sm text-muted-foreground">
-                      Recevoir des alertes importantes par email
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nom d'utilisateur *</label>
+                      <Input
+                        value={profile.username}
+                        onChange={(e) => setProfile({ ...profile, username: e.target.value })}
+                        placeholder="nom.utilisateur"
+                      />
                     </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifications.emailAlerts}
-                    onChange={(e) => setNotifications({ ...notifications, emailAlerts: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-medium">Alertes stock faible</div>
-                    <div className="text-sm text-muted-foreground">
-                      Notification quand un article est en stock faible
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Email *</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          type="email"
+                          className="pl-10"
+                          value={profile.email}
+                          onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                          placeholder="email@example.com"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifications.lowStockAlerts}
-                    onChange={(e) => setNotifications({ ...notifications, lowStockAlerts: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-medium">Rapport quotidien</div>
-                    <div className="text-sm text-muted-foreground">
-                      Recevoir un résumé des ventes chaque jour
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nom complet</label>
+                      <Input
+                        value={profile.full_name}
+                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                        placeholder="Jean Dupont"
+                      />
                     </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifications.dailyReport}
-                    onChange={(e) => setNotifications({ ...notifications, dailyReport: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-medium">Rapport hebdomadaire</div>
-                    <div className="text-sm text-muted-foreground">
-                      Recevoir un résumé des ventes chaque semaine
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Rôle</label>
+                      <Input value={profile.role} disabled className="bg-muted" />
                     </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifications.weeklyReport}
-                    onChange={(e) => setNotifications({ ...notifications, weeklyReport: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <div className="font-medium">Nouveaux produits</div>
-                    <div className="text-sm text-muted-foreground">
-                      Notification quand un nouveau produit est ajouté
+                    <div className="flex justify-end pt-4">
+                      <Button onClick={handleProfileSave} disabled={isSaving}>
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enregistrement...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Enregistrer
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={notifications.newProductNotif}
-                    onChange={(e) => setNotifications({ ...notifications, newProductNotif: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSaving ? "Enregistrement..." : "Enregistrer"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Stock Alerts Tab */}
-          {activeTab === "alerts" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuration des alertes de stock</CardTitle>
-                <CardDescription>
-                  Définissez les seuils d'alerte pour votre inventaire
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Seuil stock faible</label>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={stockAlerts.lowStockThreshold}
-                      onChange={(e) => setStockAlerts({ ...stockAlerts, lowStockThreshold: parseInt(e.target.value) })}
-                      className="max-w-[200px]"
-                    />
-                    <span className="text-sm text-muted-foreground">articles</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Alerte quand la quantité en stock passe sous ce seuil
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Seuil stock critique</label>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={stockAlerts.criticalStockThreshold}
-                      onChange={(e) => setStockAlerts({ ...stockAlerts, criticalStockThreshold: parseInt(e.target.value) })}
-                      className="max-w-[200px]"
-                    />
-                    <span className="text-sm text-muted-foreground">articles</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Alerte urgente quand la quantité passe sous ce seuil
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Avertissement d'expiration</label>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={stockAlerts.expirationWarning}
-                      onChange={(e) => setStockAlerts({ ...stockAlerts, expirationWarning: parseInt(e.target.value) })}
-                      className="max-w-[200px]"
-                    />
-                    <span className="text-sm text-muted-foreground">jours</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Alerte avant expiration des produits périssables
-                  </p>
-                </div>
-
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-amber-800">
-                    <strong>Note :</strong> Les alertes sont envoyées selon vos préférences de notification.
-                    Assurez-vous d'avoir activé les notifications dans l'onglet "Notifications".
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSaving ? "Enregistrement..." : "Enregistrer"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Store Tab */}
-          {activeTab === "store" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations de la boutique</CardTitle>
-                <CardDescription>
-                  Gérez les informations de votre point de vente
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom de la boutique</label>
-                  <Input
-                    value={store.name}
-                    onChange={(e) => setStore({ ...store, name: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Adresse</label>
-                  <Input
-                    value={store.address}
-                    onChange={(e) => setStore({ ...store, address: e.target.value })}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Ville</label>
-                    <Input
-                      value={store.city}
-                      onChange={(e) => setStore({ ...store, city: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Code postal</label>
-                    <Input
-                      value={store.postalCode}
-                      onChange={(e) => setStore({ ...store, postalCode: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Pays</label>
-                    <Input
-                      value={store.country}
-                      onChange={(e) => setStore({ ...store, country: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSaving ? "Enregistrement..." : "Enregistrer"}
-                  </Button>
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
@@ -418,28 +274,102 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                    {error}
+                  </div>
+                )}
+                {success && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                    {success}
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Mot de passe actuel</label>
+                  <label className="text-sm font-medium">Mot de passe actuel *</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="password" className="pl-10" placeholder="••••••••" />
+                    <Input
+                      type={showPasswords.current ? "text" : "password"}
+                      className="pl-10 pr-10"
+                      placeholder="••••••••"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => {
+                        setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                        if (passwordErrors.currentPassword) {
+                          setPasswordErrors({ ...passwordErrors, currentPassword: "" })
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswords.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
+                  {passwordErrors.currentPassword && (
+                    <p className="text-sm text-red-600">{passwordErrors.currentPassword}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Nouveau mot de passe</label>
+                  <label className="text-sm font-medium">Nouveau mot de passe *</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="password" className="pl-10" placeholder="••••••••" />
+                    <Input
+                      type={showPasswords.new ? "text" : "password"}
+                      className="pl-10 pr-10"
+                      placeholder="••••••••"
+                      value={passwordData.newPassword}
+                      onChange={(e) => {
+                        setPasswordData({ ...passwordData, newPassword: e.target.value })
+                        if (passwordErrors.newPassword) {
+                          setPasswordErrors({ ...passwordErrors, newPassword: "" })
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswords.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
+                  {passwordErrors.newPassword && (
+                    <p className="text-sm text-red-600">{passwordErrors.newPassword}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Confirmer le nouveau mot de passe</label>
+                  <label className="text-sm font-medium">Confirmer le nouveau mot de passe *</label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input type="password" className="pl-10" placeholder="••••••••" />
+                    <Input
+                      type={showPasswords.confirm ? "text" : "password"}
+                      className="pl-10 pr-10"
+                      placeholder="••••••••"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => {
+                        setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                        if (passwordErrors.confirmPassword) {
+                          setPasswordErrors({ ...passwordErrors, confirmPassword: "" })
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswords.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
+                  {passwordErrors.confirmPassword && (
+                    <p className="text-sm text-red-600">{passwordErrors.confirmPassword}</p>
+                  )}
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
@@ -447,7 +377,7 @@ export default function Settings() {
                   <div className="text-sm text-blue-800">
                     <strong>Conseils de sécurité :</strong>
                     <ul className="mt-2 space-y-1 list-disc list-inside">
-                      <li>Utilisez au moins 8 caractères</li>
+                      <li>Utilisez au moins 6 caractères</li>
                       <li>Incluez des lettres majuscules et minuscules</li>
                       <li>Ajoutez des chiffres et des caractères spéciaux</li>
                       <li>Ne réutilisez pas de mots de passe existants</li>
@@ -456,9 +386,18 @@ export default function Settings() {
                 </div>
 
                 <div className="flex justify-end pt-4">
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isSaving ? "Modifier le mot de passe" : "Modifier le mot de passe"}
+                  <Button onClick={handlePasswordChange} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Modification...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Modifier le mot de passe
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>

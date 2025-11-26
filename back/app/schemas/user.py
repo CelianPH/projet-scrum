@@ -14,6 +14,14 @@ class UserCreate(UserBase):
     role: UserRole = UserRole.GESTIONNAIRE
 
 
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[UserRole] = None
+
+
 class UserResponse(UserBase):
     id: int
     role: UserRole
@@ -31,3 +39,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
+
+
+class ProfileUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
