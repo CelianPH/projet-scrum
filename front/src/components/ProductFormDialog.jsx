@@ -17,6 +17,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, categor
     color: "",
     quantity: 0,
     min_stock_threshold: 10,
+    location: "",
   })
 
   const [loading, setLoading] = useState(false)
@@ -34,6 +35,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, categor
         color: product.color || "",
         quantity: product.quantity || 0,
         min_stock_threshold: product.min_stock_threshold || 10,
+        location: product.location || "",
       })
     } else {
       setFormData({
@@ -46,6 +48,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, categor
         color: "",
         quantity: 0,
         min_stock_threshold: 10,
+        location: "",
       })
     }
   }, [product, open])
@@ -204,7 +207,7 @@ export default function ProductFormDialog({ open, onOpenChange, product, categor
                 />
               </div>
 
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
                 <label className="text-sm font-medium">Seuil de stock faible *</label>
                 <Input
                   name="min_stock_threshold"
@@ -216,8 +219,18 @@ export default function ProductFormDialog({ open, onOpenChange, product, categor
                   placeholder="10"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Une alerte sera affichée quand le stock atteint ce seuil
+                  Alerte affichée à ce seuil
                 </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Emplacement</label>
+                <Input
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Ex: A1-15, B2-08"
+                />
               </div>
             </div>
           </div>
