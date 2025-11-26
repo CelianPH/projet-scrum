@@ -16,6 +16,7 @@ class Product(Base):
     color = Column(String, nullable=True)
     quantity = Column(Integer, nullable=False, default=0)
     min_stock_threshold = Column(Integer, nullable=False, default=10)
+    location = Column(String, nullable=True)
 
     # Relations
     category = relationship("Category", back_populates="products")

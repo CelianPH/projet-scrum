@@ -10,7 +10,8 @@ import {
   Filter,
   X,
   Download,
-  PackagePlus
+  PackagePlus,
+  Eye
 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 import apiService from "@/services/api"
@@ -21,74 +22,48 @@ import DeleteProductDialog from "@/components/DeleteProductDialog"
 export default function Inventory() {
   const { canManageStock, canManageProducts } = useAuth()
 
+  const [inventory, setInventory] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedSize, setSelectedSize] = useState("")
   const [selectedColor, setSelectedColor] = useState("")
   const [showFilters, setShowFilters] = useState(false)
 
-  const [inventory, setInventory] = useState([])
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  // Dialog states
+  const [selectedProduct, setSelectedProduct] = useState(null)
   const [stockDialogOpen, setStockDialogOpen] = useState(false)
   const [productFormOpen, setProductFormOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState(null)
-
-  // Load data
-  useEffect(() => {
-    loadData()
-  }, [])
 
   const loadData = async () => {
     setLoading(true)
     setError("")
 
     try {
+      // Charger les produits et les catégories en parallèle
       const [productsData, categoriesData] = await Promise.all([
         apiService.getProducts(),
         apiService.getCategories()
       ])
 
-      setInventory(productsData)
-      setCategories(categoriesData)
+      setInventory(productsData || [])
+      setCategories(categoriesData || [])
     } catch (err) {
+      console.error("Erreur lors du chargement des données:", err)
       setError(err.message || "Erreur lors du chargement des données")
     } finally {
       setLoading(false)
     }
   }
 
-  // Get unique values for filters
-  const sizes = [...new Set(inventory.map(item => item.size).filter(Boolean))].sort()
-  const colors = [...new Set(inventory.map(item => item.color).filter(Boolean))]
+  useEffect(() => {
+    loadData()
+  }, [])
 
-  // Filter inventory based on search and filters
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = searchQuery === "" ||
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesCategory = selectedCategory === "" || item.category_id === parseInt(selectedCategory)
-    const matchesSize = selectedSize === "" || item.size === selectedSize
-    const matchesColor = selectedColor === "" || item.color === selectedColor
-
-    return matchesSearch && matchesCategory && matchesSize && matchesColor
-  })
-
-  const handleClearFilters = () => {
-    setSelectedCategory("")
-    setSelectedSize("")
-    setSelectedColor("")
-    setSearchQuery("")
-  }
-
-  const activeFiltersCount = [selectedCategory, selectedSize, selectedColor].filter(f => f !== "").length
-
-  // Dialog handlers
+  // Gestion des dialogues
   const handleStockAdjustment = (product) => {
     setSelectedProduct(product)
     setStockDialogOpen(true)
@@ -109,17 +84,57 @@ export default function Inventory() {
     setProductFormOpen(true)
   }
 
+  // Fonction pour obtenir le nom de la catégorie
   const getCategoryName = (categoryId) => {
     const category = categories.find(c => c.id === categoryId)
     return category?.name || "N/A"
   }
 
+  // Valeurs uniques pour les filtres
+  const sizes = [...new Set(inventory.map(item => item.size).filter(Boolean))].sort()
+  const colors = [...new Set(inventory.map(item => item.color).filter(Boolean))]
+
+  // Filtrage des produits
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch =
+      searchQuery === "" ||
+      item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.sku?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesCategory =
+      selectedCategory === "" || item.category_id === parseInt(selectedCategory)
+    const matchesSize = selectedSize === "" || item.size === selectedSize
+    const matchesColor = selectedColor === "" || item.color === selectedColor
+
+    return matchesSearch && matchesCategory && matchesSize && matchesColor
+  })
+
+  const handleClearFilters = () => {
+    setSelectedCategory("")
+    setSelectedSize("")
+    setSelectedColor("")
+    setSearchQuery("")
+  }
+
+  const activeFiltersCount = [selectedCategory, selectedSize, selectedColor].filter(
+    f => f !== ""
+  ).length
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="text-lg font-medium">Chargement...</div>
+          <div className="text-lg font-medium">Chargement des produits...</div>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-red-600">Erreur : {error}</p>
+        <Button onClick={loadData}>Réessayer</Button>
       </div>
     )
   }
@@ -134,18 +149,12 @@ export default function Inventory() {
         </p>
       </div>
 
-      {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{inventory.length}</div>
-            <p className="text-xs text-muted-foreground">Articles total</p>
+            <p className="text-xs text-muted-foreground">Articles totaux</p>
           </CardContent>
         </Card>
         <Card>
@@ -165,7 +174,10 @@ export default function Inventory() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">
-              {inventory.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}€
+              {inventory
+                .reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                .toFixed(2)}
+              €
             </div>
             <p className="text-xs text-muted-foreground">Valeur totale</p>
           </CardContent>
@@ -238,9 +250,17 @@ export default function Inventory() {
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                 >
-                  <option value="" className="bg-background text-foreground">Toutes les catégories</option>
+                  <option value="" className="bg-background text-foreground">
+                    Toutes les catégories
+                  </option>
                   {categories.map(category => (
-                    <option key={category.id} value={category.id} className="bg-background text-foreground">{category.name}</option>
+                    <option
+                      key={category.id}
+                      value={category.id}
+                      className="bg-background text-foreground"
+                    >
+                      {category.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -253,9 +273,17 @@ export default function Inventory() {
                   value={selectedSize}
                   onChange={(e) => setSelectedSize(e.target.value)}
                 >
-                  <option value="" className="bg-background text-foreground">Toutes les tailles</option>
+                  <option value="" className="bg-background text-foreground">
+                    Toutes les tailles
+                  </option>
                   {sizes.map(size => (
-                    <option key={size} value={size} className="bg-background text-foreground">{size}</option>
+                    <option
+                      key={size}
+                      value={size}
+                      className="bg-background text-foreground"
+                    >
+                      {size}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -268,9 +296,17 @@ export default function Inventory() {
                   value={selectedColor}
                   onChange={(e) => setSelectedColor(e.target.value)}
                 >
-                  <option value="" className="bg-background text-foreground">Toutes les couleurs</option>
+                  <option value="" className="bg-background text-foreground">
+                    Toutes les couleurs
+                  </option>
                   {colors.map(color => (
-                    <option key={color} value={color} className="bg-background text-foreground">{color}</option>
+                    <option
+                      key={color}
+                      value={color}
+                      className="bg-background text-foreground"
+                    >
+                      {color}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -284,7 +320,8 @@ export default function Inventory() {
         <CardHeader>
           <CardTitle>Liste des produits</CardTitle>
           <CardDescription>
-            {filteredInventory.length} article{filteredInventory.length > 1 ? 's' : ''} trouvé{filteredInventory.length > 1 ? 's' : ''}
+            {filteredInventory.length} article{filteredInventory.length > 1 ? "s" : ""}{" "}
+            trouvé{filteredInventory.length > 1 ? "s" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -294,25 +331,43 @@ export default function Inventory() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="h-12 px-4 text-left align-middle font-medium text-sm">SKU</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Article</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Catégorie</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Taille</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Couleur</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Quantité</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Article
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Catégorie
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Taille
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Couleur
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Quantité
+                    </th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-sm">Prix</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Actions</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Emplacement
+                    </th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInventory.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="p-8 text-center text-muted-foreground">
+                      <td colSpan="9" className="p-8 text-center text-muted-foreground">
                         Aucun article trouvé
                       </td>
                     </tr>
                   ) : (
                     filteredInventory.map((item) => (
-                      <tr key={item.id} className="border-b transition-colors hover:bg-muted/50">
+                      <tr
+                        key={item.id}
+                        className="border-b transition-colors hover:bg-muted/50"
+                      >
                         <td className="p-4 align-middle">
                           <span className="font-mono text-sm">{item.sku}</span>
                         </td>
@@ -325,19 +380,34 @@ export default function Inventory() {
                         <td className="p-4 align-middle text-sm">{item.size || "-"}</td>
                         <td className="p-4 align-middle text-sm">{item.color || "-"}</td>
                         <td className="p-4 align-middle">
-                          <span className={`font-semibold ${
-                            item.quantity <= item.min_stock_threshold
-                              ? 'text-red-600'
-                              : item.quantity < item.min_stock_threshold * 2
-                                ? 'text-orange-600'
-                                : 'text-green-600'
-                          }`}>
+                          <span
+                            className={`font-semibold ${
+                              item.quantity <= item.min_stock_threshold
+                                ? "text-red-600"
+                                : item.quantity < item.min_stock_threshold * 2
+                                  ? "text-orange-600"
+                                  : "text-green-600"
+                            }`}
+                          >
                             {item.quantity}
                           </span>
                         </td>
-                        <td className="p-4 align-middle font-medium">{item.price.toFixed(2)}€</td>
+                        <td className="p-4 align-middle font-medium">
+                          {item.price.toFixed(2)}€
+                        </td>
+                        <td className="p-4 align-middle text-sm font-medium">
+                          {item.location || "-"}
+                        </td>
                         <td className="p-4 align-middle">
                           <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Voir les détails"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
                             {canManageStock() && (
                               <Button
                                 variant="ghost"
