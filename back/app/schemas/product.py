@@ -35,3 +35,9 @@ class ProductResponse(ProductBase):
 
     class Config:
         from_attributes = True
+
+
+class StockAdjustment(BaseModel):
+    """Schéma pour les ajustements de stock simples"""
+    quantity: int
+    reason: Optional[str] = None

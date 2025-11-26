@@ -1,8 +1,9 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import update
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_manager_or_admin
 from app.models.stock_movement import StockMovement, MovementType
 from app.models.product import Product
 from app.models.user import User
@@ -47,8 +48,15 @@ def get_stock_movement(
 def create_stock_movement(
     movement_data: StockMovementCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_manager_or_admin)  # Gestionnaires et admins
 ):
+    """
+    Créer un mouvement de stock avec opérations atomiques (Gestionnaire ou Admin)
+
+    - IN: Ajouter du stock
+    - OUT: Retirer du stock
+    - ADJUSTMENT: Ajuster le stock à une valeur exacte
+    """
     # Vérifier que le produit existe
     product = db.query(Product).filter(Product.id == movement_data.product_id).first()
     if not product:
@@ -57,22 +65,51 @@ def create_stock_movement(
             detail="Product not found"
         )
 
-    # Créer le mouvement
-    new_movement = StockMovement(**movement_data.model_dump())
-    db.add(new_movement)
+    # Mettre à jour la quantité du produit avec une opération atomique
+    result = None
 
-    # Mettre à jour la quantité du produit
     if movement_data.movement_type == MovementType.IN:
-        product.quantity += movement_data.quantity
+        # Ajouter du stock (opération atomique)
+        result = db.execute(
+            update(Product)
+            .where(Product.id == movement_data.product_id)
+            .values(quantity=Product.quantity + movement_data.quantity)
+        )
+
     elif movement_data.movement_type == MovementType.OUT:
-        if product.quantity < movement_data.quantity:
+        # Retirer du stock (opération atomique avec vérification)
+        result = db.execute(
+            update(Product)
+            .where(
+                Product.id == movement_data.product_id,
+                Product.quantity >= movement_data.quantity
+            )
+            .values(quantity=Product.quantity - movement_data.quantity)
+        )
+
+        if result.rowcount == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Insufficient stock"
             )
-        product.quantity -= movement_data.quantity
+
     elif movement_data.movement_type == MovementType.ADJUSTMENT:
-        product.quantity = movement_data.quantity
+        # Ajuster le stock à une valeur exacte
+        if movement_data.quantity < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Quantity cannot be negative"
+            )
+
+        result = db.execute(
+            update(Product)
+            .where(Product.id == movement_data.product_id)
+            .values(quantity=movement_data.quantity)
+        )
+
+    # Créer le mouvement de stock
+    new_movement = StockMovement(**movement_data.model_dump())
+    db.add(new_movement)
 
     db.commit()
     db.refresh(new_movement)

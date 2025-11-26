@@ -151,6 +151,54 @@ class ApiService {
       }),
     });
   }
+
+  // Product CRUD methods (Admin only)
+  async createProduct(productData) {
+    return await this.request('/products', {
+      method: 'POST',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  async updateProduct(productId, productData) {
+    return await this.request(`/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  async deleteProduct(productId) {
+    return await this.request(`/products/${productId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getProduct(productId) {
+    return await this.request(`/products/${productId}`);
+  }
+
+  // Stock adjustment methods (Manager and Admin)
+  async incrementStock(productId, quantity, reason = null) {
+    return await this.request(`/products/${productId}/increment-stock`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity, reason }),
+    });
+  }
+
+  async decrementStock(productId, quantity, reason = null) {
+    return await this.request(`/products/${productId}/decrement-stock`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity, reason }),
+    });
+  }
+
+  // Stock movements
+  async createStockMovement(movementData) {
+    return await this.request('/stock-movements', {
+      method: 'POST',
+      body: JSON.stringify(movementData),
+    });
+  }
 }
 
 export default new ApiService();

@@ -49,6 +49,22 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
+  const isAdmin = () => {
+    return user?.role === 'admin';
+  };
+
+  const isManager = () => {
+    return user?.role === 'gestionnaire';
+  };
+
+  const canManageStock = () => {
+    return user?.role === 'admin' || user?.role === 'gestionnaire';
+  };
+
+  const canManageProducts = () => {
+    return user?.role === 'admin';
+  };
+
   const value = {
     user,
     login,
@@ -57,6 +73,10 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     loading,
     isAuthenticated: !!user,
+    isAdmin,
+    isManager,
+    canManageStock,
+    canManageProducts,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

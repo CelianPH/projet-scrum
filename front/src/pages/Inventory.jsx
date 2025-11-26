@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -7,48 +7,72 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
   Filter,
   X,
-  Download
+  Download,
+  PackagePlus
 } from "lucide-react"
+import { useAuth } from "@/contexts/AuthContext"
+import apiService from "@/services/api"
+import StockAdjustmentDialog from "@/components/StockAdjustmentDialog"
+import ProductFormDialog from "@/components/ProductFormDialog"
+import DeleteProductDialog from "@/components/DeleteProductDialog"
 
 export default function Inventory() {
+  const { canManageStock, canManageProducts } = useAuth()
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedSize, setSelectedSize] = useState("")
   const [selectedColor, setSelectedColor] = useState("")
   const [showFilters, setShowFilters] = useState(false)
 
-  // Mock data for inventory
-  const [inventory] = useState([
-    { id: 1, sku: "TSH-001", name: "T-shirt Sport Blanc", category: "T-shirts", size: "M", color: "Blanc", quantity: 45, price: 29.99, location: "A1-15" },
-    { id: 2, sku: "PNT-002", name: "Pantalon Jogging Noir", category: "Pantalons", size: "L", color: "Noir", quantity: 23, price: 59.99, location: "B2-08" },
-    { id: 3, sku: "SHO-003", name: "Baskets Running Rouges", category: "Chaussures", size: "42", color: "Blanc/Rouge", quantity: 12, price: 139.99, location: "C3-22" },
-    { id: 4, sku: "JKT-004", name: "Veste Coupe-Vent", category: "Vestes", size: "L", color: "Noir", quantity: 8, price: 89.99, location: "D1-05" },
-    { id: 5, sku: "TSH-005", name: "T-shirt Technique Bleu", category: "T-shirts", size: "S", color: "Bleu", quantity: 34, price: 34.99, location: "A1-18" },
-    { id: 6, sku: "SHO-006", name: "Sneakers Urbaines Blanches", category: "Chaussures", size: "41", color: "Blanc", quantity: 28, price: 119.99, location: "C3-24" },
-    { id: 7, sku: "TSH-007", name: "T-shirt Imprimé Gris", category: "T-shirts", size: "XL", color: "Gris", quantity: 19, price: 24.99, location: "A1-20" },
-    { id: 8, sku: "PNT-008", name: "Short Sport Noir", category: "Shorts", size: "M", color: "Noir", quantity: 31, price: 39.99, location: "B1-12" },
-    { id: 9, sku: "SHO-009", name: "Chaussures Running Bleues", category: "Chaussures", size: "43", color: "Bleu", quantity: 15, price: 159.99, location: "C3-26" },
-    { id: 10, sku: "JKT-010", name: "Veste Polaire Grise", category: "Vestes", size: "M", color: "Gris", quantity: 6, price: 109.99, location: "D1-08" },
-    { id: 11, sku: "TSH-011", name: "T-shirt Basique Blanc", category: "T-shirts", size: "L", color: "Blanc", quantity: 42, price: 19.99, location: "A1-22" },
-    { id: 12, sku: "SHO-012", name: "Baskets Sport Bicolores", category: "Chaussures", size: "44", color: "Noir/Blanc", quantity: 9, price: 134.99, location: "C3-28" },
-  ])
+  const [inventory, setInventory] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  // Dialog states
+  const [stockDialogOpen, setStockDialogOpen] = useState(false)
+  const [productFormOpen, setProductFormOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+
+  // Load data
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    setError("")
+
+    try {
+      const [productsData, categoriesData] = await Promise.all([
+        apiService.getProducts(),
+        apiService.getCategories()
+      ])
+
+      setInventory(productsData)
+      setCategories(categoriesData)
+    } catch (err) {
+      setError(err.message || "Erreur lors du chargement des données")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Get unique values for filters
-  const categories = [...new Set(inventory.map(item => item.category))]
-  const sizes = [...new Set(inventory.map(item => item.size))].sort()
-  const colors = [...new Set(inventory.map(item => item.color))]
+  const sizes = [...new Set(inventory.map(item => item.size).filter(Boolean))].sort()
+  const colors = [...new Set(inventory.map(item => item.color).filter(Boolean))]
 
   // Filter inventory based on search and filters
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = searchQuery === "" ||
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
+      item.sku.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesCategory = selectedCategory === "" || item.category === selectedCategory
+    const matchesCategory = selectedCategory === "" || item.category_id === parseInt(selectedCategory)
     const matchesSize = selectedSize === "" || item.size === selectedSize
     const matchesColor = selectedColor === "" || item.color === selectedColor
 
@@ -64,6 +88,42 @@ export default function Inventory() {
 
   const activeFiltersCount = [selectedCategory, selectedSize, selectedColor].filter(f => f !== "").length
 
+  // Dialog handlers
+  const handleStockAdjustment = (product) => {
+    setSelectedProduct(product)
+    setStockDialogOpen(true)
+  }
+
+  const handleEditProduct = (product) => {
+    setSelectedProduct(product)
+    setProductFormOpen(true)
+  }
+
+  const handleDeleteProduct = (product) => {
+    setSelectedProduct(product)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleCreateProduct = () => {
+    setSelectedProduct(null)
+    setProductFormOpen(true)
+  }
+
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(c => c.id === categoryId)
+    return category?.name || "N/A"
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-lg font-medium">Chargement...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       {/* Header */}
@@ -73,6 +133,12 @@ export default function Inventory() {
           Gérez l'ensemble de vos produits en stock
         </p>
       </div>
+
+      {error && (
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -91,7 +157,7 @@ export default function Inventory() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-red-600">
-              {inventory.filter(item => item.quantity < 15).length}
+              {inventory.filter(item => item.quantity <= item.min_stock_threshold).length}
             </div>
             <p className="text-xs text-muted-foreground">Stock faible</p>
           </CardContent>
@@ -111,7 +177,7 @@ export default function Inventory() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher par nom, SKU, catégorie..."
+            placeholder="Rechercher par nom, SKU..."
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -135,10 +201,12 @@ export default function Inventory() {
             <Download className="h-4 w-4 mr-2" />
             Exporter
           </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel article
-          </Button>
+          {canManageProducts() && (
+            <Button onClick={handleCreateProduct}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel article
+            </Button>
+          )}
         </div>
       </div>
 
@@ -172,7 +240,7 @@ export default function Inventory() {
                 >
                   <option value="" className="bg-background text-foreground">Toutes les catégories</option>
                   {categories.map(category => (
-                    <option key={category} value={category} className="bg-background text-foreground">{category}</option>
+                    <option key={category.id} value={category.id} className="bg-background text-foreground">{category.name}</option>
                   ))}
                 </select>
               </div>
@@ -232,14 +300,13 @@ export default function Inventory() {
                     <th className="h-12 px-4 text-left align-middle font-medium text-sm">Couleur</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-sm">Quantité</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-sm">Prix</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-sm">Emplacement</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-sm">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredInventory.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="p-8 text-center text-muted-foreground">
+                      <td colSpan="8" className="p-8 text-center text-muted-foreground">
                         Aucun article trouvé
                       </td>
                     </tr>
@@ -252,29 +319,58 @@ export default function Inventory() {
                         <td className="p-4 align-middle font-medium">{item.name}</td>
                         <td className="p-4 align-middle">
                           <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-secondary text-secondary-foreground">
-                            {item.category}
+                            {getCategoryName(item.category_id)}
                           </span>
                         </td>
-                        <td className="p-4 align-middle text-sm">{item.size}</td>
-                        <td className="p-4 align-middle text-sm">{item.color}</td>
+                        <td className="p-4 align-middle text-sm">{item.size || "-"}</td>
+                        <td className="p-4 align-middle text-sm">{item.color || "-"}</td>
                         <td className="p-4 align-middle">
-                          <span className={`font-semibold ${item.quantity < 15 ? 'text-red-600' : item.quantity < 30 ? 'text-orange-600' : 'text-green-600'}`}>
+                          <span className={`font-semibold ${
+                            item.quantity <= item.min_stock_threshold
+                              ? 'text-red-600'
+                              : item.quantity < item.min_stock_threshold * 2
+                                ? 'text-orange-600'
+                                : 'text-green-600'
+                          }`}>
                             {item.quantity}
                           </span>
                         </td>
-                        <td className="p-4 align-middle font-medium">{item.price}€</td>
-                        <td className="p-4 align-middle text-sm text-muted-foreground">{item.location}</td>
+                        <td className="p-4 align-middle font-medium">{item.price.toFixed(2)}€</td>
                         <td className="p-4 align-middle">
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Voir les détails">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Modifier">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" title="Supprimer">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canManageStock() && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Ajuster le stock"
+                                onClick={() => handleStockAdjustment(item)}
+                              >
+                                <PackagePlus className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canManageProducts() && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  title="Modifier"
+                                  onClick={() => handleEditProduct(item)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700"
+                                  title="Supprimer"
+                                  onClick={() => handleDeleteProduct(item)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -286,6 +382,29 @@ export default function Inventory() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <StockAdjustmentDialog
+        open={stockDialogOpen}
+        onOpenChange={setStockDialogOpen}
+        product={selectedProduct}
+        onSuccess={loadData}
+      />
+
+      <ProductFormDialog
+        open={productFormOpen}
+        onOpenChange={setProductFormOpen}
+        product={selectedProduct}
+        categories={categories}
+        onSuccess={loadData}
+      />
+
+      <DeleteProductDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        product={selectedProduct}
+        onSuccess={loadData}
+      />
     </div>
   )
 }
