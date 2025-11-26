@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,56 +12,90 @@ import {
   Shirt,
   Tag
 } from "lucide-react"
+import api from "@/services/api"
 
 function Dashboard() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState("")
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Données mockées pour les statistiques
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      const [productsData, categoriesData] = await Promise.all([
+        api.getProducts(),
+        api.getCategories()
+      ])
+      setProducts(productsData)
+      setCategories(categoriesData)
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Calculer les statistiques à partir des données réelles
+  const totalProducts = products.length
+  const totalCategories = categories.length
+  const totalValue = products.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const lowStockCount = products.filter(item => item.quantity <= item.min_stock_threshold).length
+  const recentItems = products.slice(0, 5)
+
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId)
+    return category ? category.name : 'N/A'
+  }
+
   const stats = [
     {
       title: "Articles en stock",
-      value: "1,234",
-      description: "+12% ce mois",
+      value: totalProducts.toString(),
+      description: `${totalCategories} catégories`,
       icon: Package,
       color: "text-blue-600"
     },
     {
       title: "Catégories",
-      value: "24",
-      description: "8 principales",
+      value: totalCategories.toString(),
+      description: "Total de catégories",
       icon: Tag,
       color: "text-green-600"
     },
     {
       title: "Valeur totale",
-      value: "45,231€",
-      description: "+8% ce mois",
+      value: `${totalValue.toFixed(2)}€`,
+      description: "Valeur du stock",
       icon: TrendingUp,
       color: "text-purple-600"
     },
     {
       title: "Stock faible",
-      value: "12",
+      value: lowStockCount.toString(),
       description: "À réapprovisionner",
       icon: AlertCircle,
       color: "text-red-600"
     }
   ]
 
-  // Données mockées pour les articles récents
-  const recentItems = [
-    { id: 1, name: "T-shirt blanc basique", category: "T-shirts", stock: 45, price: "19.99€" },
-    { id: 2, name: "Jean slim noir", category: "Pantalons", stock: 23, price: "49.99€" },
-    { id: 3, name: "Robe d'été fleurie", category: "Robes", stock: 12, price: "39.99€" },
-    { id: 4, name: "Veste en cuir", category: "Vestes", stock: 8, price: "129.99€" },
-    { id: 5, name: "Chemise à carreaux", category: "Chemises", stock: 34, price: "34.99€" },
-  ]
-
   const handleSearch = () => {
     if (searchQuery.trim()) {
       navigate(`/inventory?search=${encodeURIComponent(searchQuery)}`)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    )
   }
 
   return (
@@ -161,32 +195,42 @@ function Dashboard() {
                       <th className="h-12 px-4 text-left align-middle font-medium">Catégorie</th>
                       <th className="h-12 px-4 text-left align-middle font-medium">Stock</th>
                       <th className="h-12 px-4 text-left align-middle font-medium">Prix</th>
+                      <th className="h-12 px-4 text-left align-middle font-medium">Emplacement</th>
                       <th className="h-12 px-4 text-left align-middle font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentItems.map((item) => (
-                      <tr key={item.id} className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle font-medium">{item.name}</td>
-                        <td className="p-4 align-middle">
-                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground">
-                            {item.category}
-                          </span>
-                        </td>
-                        <td className="p-4 align-middle">
-                          <span className={`font-medium ${item.stock < 15 ? 'text-red-600' : 'text-green-600'}`}>
-                            {item.stock}
-                          </span>
-                        </td>
-                        <td className="p-4 align-middle font-medium">{item.price}</td>
-                        <td className="p-4 align-middle">
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm">Voir</Button>
-                            <Button variant="ghost" size="sm">Modifier</Button>
-                          </div>
+                    {recentItems.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-muted-foreground">
+                          Aucun article récent
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      recentItems.map((item) => (
+                        <tr key={item.id} className="border-b transition-colors hover:bg-muted/50">
+                          <td className="p-4 align-middle font-medium">{item.name}</td>
+                          <td className="p-4 align-middle">
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-secondary text-secondary-foreground">
+                              {getCategoryName(item.category_id)}
+                            </span>
+                          </td>
+                          <td className="p-4 align-middle">
+                            <span className={`font-medium ${item.quantity <= item.min_stock_threshold ? 'text-red-600' : 'text-green-600'}`}>
+                              {item.quantity}
+                            </span>
+                          </td>
+                          <td className="p-4 align-middle font-medium">{item.price}€</td>
+                          <td className="p-4 align-middle text-sm font-medium">{item.location || '-'}</td>
+                          <td className="p-4 align-middle">
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="sm">Voir</Button>
+                              <Button variant="ghost" size="sm">Modifier</Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
